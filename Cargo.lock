@@ -280,8 +280,8 @@ dependencies = [
 
 [[package]]
 name = "blst"
-version = "0.3.11"
-source = "git+https://github.com/CeciliaZ030/blst.git?branch=v0.3.12-serialize#b0996ee5e8ef85cdc42b31bf1db9e5e3d0009d60"
+version = "0.3.14"
+source = "git+https://github.com/smtmfft/blst.git?branch=v0.3.14-serialize#c49298927eeb03e63344b1596ce10c60a728872a"
 dependencies = [
  "cc",
  "glob",
