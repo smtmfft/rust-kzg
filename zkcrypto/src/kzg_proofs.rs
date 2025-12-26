@@ -13,6 +13,7 @@ use std::ops::{Add, Neg};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FFTSettings {
     pub max_width: usize,
     pub root_of_unity: ZFr,
@@ -41,11 +42,13 @@ pub fn expand_root_of_unity(root: &BlstFr, width: usize) -> Result<Vec<BlstFr>, 
 
 #[derive(Debug, Clone, Default)]
 #[allow(clippy::type_complexity)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct KZGSettings {
     pub fs: FFTSettings,
     pub g1_values_monomial: Vec<ZG1>,
     pub g1_values_lagrange_brp: Vec<ZG1>,
     pub g2_values_monomial: Vec<ZG2>,
+    #[cfg_attr(feature = "serde", serde(skip_serializing, skip_deserializing))]
     pub precomputation:
         Option<Arc<PrecomputationTable<ZFr, ZG1, ZFp, ZG1Affine, ZG1ProjAddAffine>>>,
     pub x_ext_fft_columns: Vec<Vec<ZG1>>,

@@ -44,8 +44,32 @@ fn bigint_check_mod_256(a: &[u64; 4]) -> bool {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(from = "ZFrBytes", into = "ZFrBytes"))]
 pub struct ZFr {
     pub fr: Scalar,
+}
+
+#[cfg(feature = "serde")]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+struct ZFrBytes(#[serde(with = "serde_bytes")] Vec<u8>);
+
+#[cfg(feature = "serde")]
+impl From<ZFr> for ZFrBytes {
+    fn from(fr: ZFr) -> Self {
+        ZFrBytes(fr.to_bytes().to_vec())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl From<ZFrBytes> for ZFr {
+    fn from(bytes: ZFrBytes) -> Self {
+        let arr: [u8; 32] = bytes.0.try_into()
+            .unwrap_or_else(|_| panic!("Invalid ZFr byte length"));
+        Self::from_bytes_unchecked(&arr)
+            .unwrap_or_else(|e| panic!("Failed to deserialize ZFr: {}", e))
+    }
 }
 
 impl ZFr {
@@ -384,8 +408,32 @@ impl G1Fp for ZFp {
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(from = "ZG1Bytes", into = "ZG1Bytes"))]
 pub struct ZG1 {
     pub proj: G1Projective,
+}
+
+#[cfg(feature = "serde")]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+struct ZG1Bytes(#[serde(with = "serde_bytes")] Vec<u8>);
+
+#[cfg(feature = "serde")]
+impl From<ZG1> for ZG1Bytes {
+    fn from(g1: ZG1) -> Self {
+        ZG1Bytes(g1.to_bytes().to_vec())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl From<ZG1Bytes> for ZG1 {
+    fn from(bytes: ZG1Bytes) -> Self {
+        let arr: [u8; 48] = bytes.0.try_into()
+            .unwrap_or_else(|_| panic!("Invalid ZG1 byte length"));
+        Self::from_bytes(&arr)
+            .unwrap_or_else(|e| panic!("Failed to deserialize ZG1: {}", e))
+    }
 }
 
 impl Hash for ZG1 {
@@ -767,8 +815,32 @@ impl PairingVerify<ZG1, ZG2> for ZG1 {
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(from = "ZG2Bytes", into = "ZG2Bytes"))]
 pub struct ZG2 {
     pub proj: G2Projective,
+}
+
+#[cfg(feature = "serde")]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+struct ZG2Bytes(#[serde(with = "serde_bytes")] Vec<u8>);
+
+#[cfg(feature = "serde")]
+impl From<ZG2> for ZG2Bytes {
+    fn from(g2: ZG2) -> Self {
+        ZG2Bytes(g2.to_bytes().to_vec())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl From<ZG2Bytes> for ZG2 {
+    fn from(bytes: ZG2Bytes) -> Self {
+        let arr: [u8; 96] = bytes.0.try_into()
+            .unwrap_or_else(|_| panic!("Invalid ZG2 byte length"));
+        Self::from_bytes(&arr)
+            .unwrap_or_else(|e| panic!("Failed to deserialize ZG2: {}", e))
+    }
 }
 
 impl ZG2 {
