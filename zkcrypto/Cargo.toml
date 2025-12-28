@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 kzg = { path = "../kzg", default-features = false }
-kzg-bench = { path = "../kzg-bench", default-features = false }
 bls12_381 = { path = "../zkcrypto/bls12_381" }
 ff = { version = "0.13", features = ["derive"] }
 hex = "0.4.3"

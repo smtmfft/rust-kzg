@@ -2,6 +2,8 @@
 //!
 //! These functions internally specify all necessary type parameters, making them easier to use.
 
+#[cfg(feature = "std")]
+use crate::eip_4844::load_trusted_setup_filename_rust as load_trusted_setup_from_file;
 use crate::kzg_proofs::{FFTSettings, KZGSettings};
 use crate::kzg_types::{ZFp, ZFr, ZG1Affine, ZG1ProjAddAffine, ZG1, ZG2};
 use crate::poly::PolyData;
@@ -9,6 +11,106 @@ use kzg::eip_4844::{
     blob_to_kzg_commitment_rust, bytes_to_blob, compute_blob_kzg_proof_rust,
     verify_blob_kzg_proof_rust,
 };
+
+/// Load KZG settings from a trusted setup text file (simplified version)
+///
+/// This function loads the trusted setup from a text file and returns a `KZGSettings`
+/// instance with all type parameters already specified. You don't need to know
+/// the internal types (ZFr, ZG1, etc.) - just use the returned `KZGSettings`.
+///
+/// **Note:** Loading from text file is slow (takes 10-80 seconds) because it needs to:
+/// - Parse the text file (800KB+)
+/// - Deserialize 4096 G1 points and 65 G2 points
+/// - Compute FFT settings
+/// - Compute x_ext_fft_columns (64 FFT operations)
+/// - Generate precomputation tables (if enabled)
+///
+/// For faster loading, consider serializing the settings to binary format first
+/// using `save_trusted_setup`, then loading with `load_trusted_setup_from_binary`.
+///
+/// # Arguments
+/// - `filepath`: Path to the trusted setup text file
+///
+/// # Returns
+/// - `Ok(KZGSettings)`: KZG settings ready to use
+/// - `Err(String)`: error message
+///
+/// # Example
+/// ```rust
+/// use rust_kzg_zkcrypto::load_trusted_setup;
+///
+/// let settings = load_trusted_setup("path/to/trusted_setup.txt")?;
+/// ```
+pub fn load_trusted_setup(filepath: &str) -> Result<KZGSettings, String> {
+    #[cfg(feature = "std")]
+    return load_trusted_setup_from_file(filepath);
+    #[cfg(not(feature = "std"))]
+    return Err("load_trusted_setup is not supported in this configuration".to_string());
+}
+
+/// Save KZG settings to a binary file (simplified version)
+///
+/// This function serializes `KZGSettings` to a binary file using `bincode`.
+/// Loading from binary is much faster (seconds) than loading from text file (minutes).
+///
+/// **Requires:** `bincode` feature to be enabled.
+///
+/// # Arguments
+/// - `settings`: KZG settings to serialize
+/// - `filepath`: Path where to save the binary file
+///
+/// # Returns
+/// - `Ok(())`: Success
+/// - `Err(String)`: error message
+///
+/// # Example
+/// ```rust
+/// use rust_kzg_zkcrypto::{load_trusted_setup, save_trusted_setup};
+///
+/// // First time: load from text file (slow)
+/// let settings = load_trusted_setup("trusted_setup.txt")?;
+///
+/// // Save to binary for faster loading next time
+/// save_trusted_setup(&settings, "settings.bin")?;
+/// ```
+#[cfg(feature = "bincode")]
+pub fn save_trusted_setup(settings: &KZGSettings, filepath: &str) -> Result<(), String> {
+    use std::fs;
+    let serialized = bincode::serialize(settings)
+        .map_err(|e| format!("Failed to serialize KZGSettings: {}", e))?;
+    fs::write(filepath, &serialized).map_err(|e| format!("Failed to write binary file: {}", e))?;
+    Ok(())
+}
+
+/// Load KZG settings from a binary file (simplified version)
+///
+/// This function deserializes `KZGSettings` from a binary file created by `save_trusted_setup`.
+/// This is much faster (seconds) than loading from text file (minutes).
+///
+/// **Requires:** `bincode` feature to be enabled.
+///
+/// # Arguments
+/// - `filepath`: Path to the binary file
+///
+/// # Returns
+/// - `Ok(KZGSettings)`: KZG settings ready to use
+/// - `Err(String)`: error message
+///
+/// # Example
+/// ```rust
+/// use rust_kzg_zkcrypto::load_trusted_setup_from_binary;
+///
+/// // Fast loading from binary file
+/// let settings = load_trusted_setup_from_binary("settings.bin")?;
+/// ```
+#[cfg(feature = "bincode")]
+pub fn load_trusted_setup_from_binary(filepath: &str) -> Result<KZGSettings, String> {
+    use std::fs;
+    let binary_data =
+        fs::read(filepath).map_err(|e| format!("Failed to read binary file: {}", e))?;
+    bincode::deserialize(&binary_data)
+        .map_err(|e| format!("Failed to deserialize KZGSettings: {}", e))
+}
 
 /// Compute KZG commitment from blob (simplified version)
 ///
