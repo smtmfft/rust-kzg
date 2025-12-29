@@ -415,24 +415,87 @@ pub struct ZG1 {
 }
 
 #[cfg(feature = "serde")]
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(transparent)]
-struct ZG1Bytes(#[serde(with = "serde_bytes")] Vec<u8>);
+struct ZG1Bytes([u8; 96]); // Using uncompressed format (96 bytes) for faster deserialization
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for ZG1Bytes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serde_bytes::serialize(&self.0[..], serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for ZG1Bytes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // Use a visitor to deserialize directly into the array
+        struct ZG1BytesVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for ZG1BytesVisitor {
+            type Value = ZG1Bytes;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a byte array of length 96")
+            }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                v.try_into()
+                    .map(ZG1Bytes)
+                    .map_err(|_| E::invalid_length(v.len(), &"96"))
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let mut arr = [0u8; 96];
+                let mut idx = 0;
+                while let Some(byte) = seq.next_element()? {
+                    if idx >= 96 {
+                        return Err(serde::de::Error::invalid_length(idx + 1, &"96"));
+                    }
+                    arr[idx] = byte;
+                    idx += 1;
+                }
+                if idx != 96 {
+                    return Err(serde::de::Error::invalid_length(idx, &"96"));
+                }
+                Ok(ZG1Bytes(arr))
+            }
+        }
+
+        // Try deserialize_bytes first (for binary formats like bincode)
+        // If that fails, try deserialize_seq (for text formats like JSON)
+        deserializer.deserialize_bytes(ZG1BytesVisitor)
+    }
+}
 
 #[cfg(feature = "serde")]
 impl From<ZG1> for ZG1Bytes {
     fn from(g1: ZG1) -> Self {
-        ZG1Bytes(g1.to_bytes().to_vec())
+        // Use uncompressed format for faster deserialization (no sqrt computation needed)
+        let g1_affine = G1Affine::from(g1.proj);
+        ZG1Bytes(g1_affine.to_uncompressed())
     }
 }
 
 #[cfg(feature = "serde")]
 impl From<ZG1Bytes> for ZG1 {
     fn from(bytes: ZG1Bytes) -> Self {
-        let arr: [u8; 48] = bytes.0.try_into()
-            .unwrap_or_else(|_| panic!("Invalid ZG1 byte length"));
-        Self::from_bytes(&arr)
-            .unwrap_or_else(|e| panic!("Failed to deserialize ZG1: {}", e))
+        // Use uncompressed format for faster deserialization (no sqrt computation needed)
+        let affine: CtOption<G1Affine> = G1Affine::from_uncompressed(&bytes.0);
+        match affine.into() {
+            Some(x) => ZG1::affine_to_projective(x),
+            None => panic!("Failed to deserialize G1: invalid uncompressed bytes"),
+        }
     }
 }
 
@@ -822,24 +885,85 @@ pub struct ZG2 {
 }
 
 #[cfg(feature = "serde")]
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(transparent)]
-struct ZG2Bytes(#[serde(with = "serde_bytes")] Vec<u8>);
+struct ZG2Bytes([u8; 192]); // Using uncompressed format (192 bytes) for faster deserialization
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for ZG2Bytes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serde_bytes::serialize(&self.0[..], serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for ZG2Bytes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // Use a visitor to deserialize directly into the array
+        struct ZG2BytesVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for ZG2BytesVisitor {
+            type Value = ZG2Bytes;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a byte array of length 192")
+            }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                v.try_into()
+                    .map(ZG2Bytes)
+                    .map_err(|_| E::invalid_length(v.len(), &"192"))
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let mut arr = [0u8; 192];
+                let mut idx = 0;
+                while let Some(byte) = seq.next_element()? {
+                    if idx >= 192 {
+                        return Err(serde::de::Error::invalid_length(idx + 1, &"192"));
+                    }
+                    arr[idx] = byte;
+                    idx += 1;
+                }
+                if idx != 192 {
+                    return Err(serde::de::Error::invalid_length(idx, &"192"));
+                }
+                Ok(ZG2Bytes(arr))
+            }
+        }
+
+        deserializer.deserialize_bytes(ZG2BytesVisitor)
+    }
+}
 
 #[cfg(feature = "serde")]
 impl From<ZG2> for ZG2Bytes {
     fn from(g2: ZG2) -> Self {
-        ZG2Bytes(g2.to_bytes().to_vec())
+        // Use uncompressed format for faster deserialization (no sqrt computation needed)
+        let g2_affine = G2Affine::from(g2.proj);
+        ZG2Bytes(g2_affine.to_uncompressed())
     }
 }
 
 #[cfg(feature = "serde")]
 impl From<ZG2Bytes> for ZG2 {
     fn from(bytes: ZG2Bytes) -> Self {
-        let arr: [u8; 96] = bytes.0.try_into()
-            .unwrap_or_else(|_| panic!("Invalid ZG2 byte length"));
-        Self::from_bytes(&arr)
-            .unwrap_or_else(|e| panic!("Failed to deserialize ZG2: {}", e))
+        // Use uncompressed format for faster deserialization (no sqrt computation needed)
+        let affine: CtOption<G2Affine> = G2Affine::from_uncompressed(&bytes.0);
+        match Option::<G2Affine>::from(affine) {
+            Some(x) => ZG2::from_g2_projective(G2Projective::from(&x)),
+            None => panic!("Failed to deserialize G2: invalid uncompressed bytes"),
+        }
     }
 }
 
