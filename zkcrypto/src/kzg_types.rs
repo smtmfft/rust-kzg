@@ -783,7 +783,8 @@ impl G1AffineTrait<ZG1, ZFp> for ZG1Affine {
     }
 
     fn from_bytes_uncompressed(bytes: [u8; 96]) -> Result<Self, String> {
-        G1Affine::from_uncompressed(&bytes)
+        // Use unchecked version for faster deserialization when data is trusted
+        G1Affine::from_uncompressed_unchecked(&bytes)
             .map(Self)
             .into_option()
             .ok_or("Failed to deserialize point".to_owned())
