@@ -490,8 +490,10 @@ impl From<ZG1> for ZG1Bytes {
 #[cfg(feature = "serde")]
 impl From<ZG1Bytes> for ZG1 {
     fn from(bytes: ZG1Bytes) -> Self {
-        // Use uncompressed format for faster deserialization (no sqrt computation needed)
-        let affine: CtOption<G1Affine> = G1Affine::from_uncompressed(&bytes.0);
+        // Use uncompressed_unchecked for faster deserialization:
+        // - No sqrt computation needed (uncompressed format)
+        // - Skip expensive is_on_curve() and is_torsion_free() checks since we trust our serialized data
+        let affine: CtOption<G1Affine> = G1Affine::from_uncompressed_unchecked(&bytes.0);
         match affine.into() {
             Some(x) => ZG1::affine_to_projective(x),
             None => panic!("Failed to deserialize G1: invalid uncompressed bytes"),
@@ -958,8 +960,10 @@ impl From<ZG2> for ZG2Bytes {
 #[cfg(feature = "serde")]
 impl From<ZG2Bytes> for ZG2 {
     fn from(bytes: ZG2Bytes) -> Self {
-        // Use uncompressed format for faster deserialization (no sqrt computation needed)
-        let affine: CtOption<G2Affine> = G2Affine::from_uncompressed(&bytes.0);
+        // Use uncompressed_unchecked for faster deserialization:
+        // - No sqrt computation needed (uncompressed format)
+        // - Skip expensive is_on_curve() and is_torsion_free() checks since we trust our serialized data
+        let affine: CtOption<G2Affine> = G2Affine::from_uncompressed_unchecked(&bytes.0);
         match Option::<G2Affine>::from(affine) {
             Some(x) => ZG2::from_g2_projective(G2Projective::from(&x)),
             None => panic!("Failed to deserialize G2: invalid uncompressed bytes"),
